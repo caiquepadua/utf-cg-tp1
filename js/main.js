@@ -1,6 +1,8 @@
 // js/main.js
 import { criarRenderer, criarTextura, carregarImagem } from "./renderer.js";
 import { Inimigo } from "./entities/Inimigo.js";
+import { Torre } from "./entities/Torre.js";
+import { Projetil } from "./entities/Projetil.js";
 
 const canvas = document.getElementById("game-canvas");
 canvas.width = 960;
@@ -24,6 +26,8 @@ async function iniciar() {
   let tempoDesdeUltimoSpawn = 0;
   const intervaloSpawn = 1.5; // segundos entre cada inimigo
 
+  const projeteis = [];
+
   // aparece aleatorio
   function spawnarInimigo() {
     const borda = Math.floor(Math.random() * 4);
@@ -40,6 +44,29 @@ async function iniciar() {
       largura: 40,
       altura: 40,
       textura: texturaAreia,
+    }));
+  }
+
+  const torre = new Torre({
+      x: centroX,
+      y: centroY,
+      alcance: 200,
+      dano: 10,
+      cadencia: 1, // 1 tiro por segundo
+      largura: 60,
+      altura: 60,
+      textura: texturaAreia, // placeholder por enquanto
+    });
+
+  function criarProjetil(x, y, alvo) {
+    projeteis.push(new Projetil({
+      x, y,
+      alvo,
+      velocidade: 400,
+      dano: torre.dano,
+      largura: 12,
+      altura: 12,
+      textura: texturaAreia, // placeholder
     }));
   }
 
@@ -62,6 +89,26 @@ async function iniciar() {
       inimigo.atualizar(deltaTime, centroX, centroY);
     }
 
+    torre.atualizar(deltaTime, inimigos, criarProjetil);
+
+    for (const projetil of projeteis) {
+        projetil.atualizar(deltaTime);
+    }
+
+    // remove inimigos mortos
+    for (let i = inimigos.length - 1; i >= 0; i--) {
+      if (inimigos[i].morto) {
+        inimigos.splice(i, 1);
+      }
+    }
+
+    // remove projéteis que já acertaram (ou perderam o alvo)
+    for (let i = projeteis.length - 1; i >= 0; i--) {
+      if (projeteis[i].atingiuAlvo) {
+        projeteis.splice(i, 1);
+      }
+    }
+
     // DESENHAR
     renderer.limparTela();
     for (const inimigo of inimigos) {
@@ -71,6 +118,24 @@ async function iniciar() {
         largura: inimigo.largura,
         altura: inimigo.altura,
         textura: inimigo.textura,
+      });
+    }
+
+    renderer.desenharSprite({
+      x: torre.x,
+      y: torre.y,
+      largura: torre.largura,
+      altura: torre.altura,
+      textura: torre.textura,
+    });
+
+    for (const projetil of projeteis) {
+      renderer.desenharSprite({
+        x: projetil.x,
+        y: projetil.y,
+        largura: projetil.largura,
+        altura: projetil.altura,
+        textura: projetil.textura,
       });
     }
 
