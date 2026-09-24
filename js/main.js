@@ -1,17 +1,83 @@
-// Ponto de entrada do jogo.
-// Por enquanto só inicializa o WebGL2 e limpa a tela, pra confirmar
-// que o ambiente está funcionando antes de começar a desenhar algo.
+// js/main.js
+import { criarRenderer, criarTextura, carregarImagem } from "./renderer.js";
+import { Inimigo } from "./entities/Inimigo.js";
 
 const canvas = document.getElementById("game-canvas");
 canvas.width = 960;
 canvas.height = 540;
 
 const gl = canvas.getContext("webgl2");
-
 if (!gl) {
   alert("Seu navegador não suporta WebGL2 :(");
-} else {
-  gl.clearColor(0.1, 0.1, 0.15, 1.0);
-  gl.clear(gl.COLOR_BUFFER_BIT);
-  console.log("WebGL2 inicializado com sucesso!");
 }
+
+const centroX = canvas.width / 2;
+const centroY = canvas.height / 2;
+
+async function iniciar() {
+  const renderer = await criarRenderer(gl);
+
+  const imagemAreia = await carregarImagem("assets/images/areia.jpg");
+  const texturaAreia = criarTextura(gl, imagemAreia); // placeholder
+
+  const inimigos = [];
+  let tempoDesdeUltimoSpawn = 0;
+  const intervaloSpawn = 1.5; // segundos entre cada inimigo
+
+  // aparece aleatorio
+  function spawnarInimigo() {
+    const borda = Math.floor(Math.random() * 4);
+    let x, y;
+    if (borda === 0) { x = Math.random() * canvas.width; y = -40; }
+    else if (borda === 1) { x = Math.random() * canvas.width; y = canvas.height + 40; }
+    else if (borda === 2) { x = -40; y = Math.random() * canvas.height; }
+    else { x = canvas.width + 40; y = Math.random() * canvas.height; }
+
+    inimigos.push(new Inimigo({
+      x, y,
+      velocidade: 80,
+      vidaMaxima: 30,
+      largura: 40,
+      altura: 40,
+      textura: texturaAreia,
+    }));
+  }
+
+  let ultimoTempo = 0;
+
+  function loop(tempoAtualMs) {
+    const tempoAtualSegundos = tempoAtualMs / 1000;
+    const deltaTime = tempoAtualSegundos - ultimoTempo;
+    ultimoTempo = tempoAtualSegundos;
+
+    // spawna
+    tempoDesdeUltimoSpawn += deltaTime;
+    if (tempoDesdeUltimoSpawn >= intervaloSpawn) {
+      tempoDesdeUltimoSpawn = 0;
+      spawnarInimigo();
+    }
+
+    // cada inimigo anda pro centro
+    for (const inimigo of inimigos) {
+      inimigo.atualizar(deltaTime, centroX, centroY);
+    }
+
+    // DESENHAR
+    renderer.limparTela();
+    for (const inimigo of inimigos) {
+      renderer.desenharSprite({
+        x: inimigo.x,
+        y: inimigo.y,
+        largura: inimigo.largura,
+        altura: inimigo.altura,
+        textura: inimigo.textura,
+      });
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+iniciar();
