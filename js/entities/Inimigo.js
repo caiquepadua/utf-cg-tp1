@@ -1,10 +1,8 @@
-// js/entities/Inimigo.js
-
 export class Inimigo {
   constructor({ x, y, velocidade, vidaMaxima, largura, altura, textura, alcanceAtaque, danoAtaque, cadenciaAtaque }) {
     this.x = x;
     this.y = y;
-    this.velocidade = velocidade;
+    this.velocidadeBase = velocidade;
     this.vidaMaxima = vidaMaxima;
     this.vida = vidaMaxima;
     this.largura = largura;
@@ -16,19 +14,36 @@ export class Inimigo {
     this.danoAtaque = danoAtaque;
     this.cadenciaAtaque = cadenciaAtaque;
     this.tempoDesdeUltimoAtaque = 0;
+
+    this.tempoDeLentidaoRestante = 0;
+    this.multiplicadorLentidao = 1;
+  }
+
+  aplicarLentidao(duracao, multiplicador) {
+    this.tempoDeLentidaoRestante = duracao;
+    this.multiplicadorLentidao = multiplicador;
   }
 
   atualizar(deltaTime, templo) {
+    if (this.tempoDeLentidaoRestante > 0) {
+      this.tempoDeLentidaoRestante -= deltaTime;
+      if (this.tempoDeLentidaoRestante <= 0) {
+        this.multiplicadorLentidao = 1; // efeito acabou
+      }
+    }
+
+    const velocidadeAtual = this.velocidadeBase * this.multiplicadorLentidao;
+
     const dx = templo.x - this.x;
     const dy = templo.y - this.y;
     const distancia = Math.hypot(dx, dy);
 
-    if (distancia > this.alcanceAtaque) { //longe
+    if (distancia > this.alcanceAtaque) {
       const dirX = dx / distancia;
       const dirY = dy / distancia;
-      this.x += dirX * this.velocidade * deltaTime;
-      this.y += dirY * this.velocidade * deltaTime;
-    } else { //perto
+      this.x += dirX * velocidadeAtual * deltaTime;
+      this.y += dirY * velocidadeAtual * deltaTime;
+    } else {
       this.tempoDesdeUltimoAtaque += deltaTime;
       if (this.tempoDesdeUltimoAtaque >= this.cadenciaAtaque) {
         this.tempoDesdeUltimoAtaque = 0;

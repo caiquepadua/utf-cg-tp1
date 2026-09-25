@@ -1,6 +1,8 @@
 import { carregarTextoDeArquivo, compilarShader, criarPrograma } from "./gl-utils.js";
 
 export async function criarRenderer(gl) {
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   const codigoVertex = await carregarTextoDeArquivo("shaders/quad.vert");
   const codigoFragment = await carregarTextoDeArquivo("shaders/quad.frag");
 
@@ -18,7 +20,12 @@ export async function criarRenderer(gl) {
   const vao = gl.createVertexArray();
   gl.bindVertexArray(vao);
 
-  const quadVertices = new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]);
+  const quadVertices = new Float32Array([
+  -0.5, -0.5,
+   0.5, -0.5,
+  -0.5,  0.5,
+   0.5,  0.5,
+  ]);
   const bufferPosicao = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, bufferPosicao);
   gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);

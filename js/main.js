@@ -3,10 +3,27 @@ import { Inimigo } from "./entities/Inimigo.js";
 import { Torre } from "./entities/Torre.js";
 import { Projetil } from "./entities/Projetil.js";
 import { Templo } from "./entities/Templo.js";
+import { criarTiposDeInimigo } from "./data/tiposDeInimigo.js";
+import { criarTiposDeTorre } from "./data/tiposDeTorre.js";
 
 const canvas = document.getElementById("game-canvas");
-canvas.width = 960;
-canvas.height = 540;
+function redimensionarCanvas() {
+  const proporcao = 16 / 9;
+  let largura = window.innerWidth;
+  let altura = window.innerHeight;
+
+  if (largura / altura > proporcao) {
+    largura = altura * proporcao;
+  } else {
+    altura = largura / proporcao;
+  }
+
+  canvas.width = largura;
+  canvas.height = altura;
+}
+
+redimensionarCanvas();
+window.addEventListener("resize", redimensionarCanvas);
 
 const gl = canvas.getContext("webgl2");
 if (!gl) {
@@ -29,17 +46,77 @@ async function iniciar() {
     location.reload();
   });
 
+  const musicaFundo = new Audio("assets/sounds/musica_egito.mp3");
+  musicaFundo.loop = true;
+  musicaFundo.volume = 0.3;
+
+  let musicaJaIniciada = false;
+
   const elementoValorVida = document.getElementById("valor-vida");
   const elementoValorPontuacao = document.getElementById("valor-pontuacao");
 
   let pontuacao = 0;
+  let catapultaDesbloqueada = false;
+  let anubisDesbloqueada = false;
+  let multiplicadorDificuldade = 1;
+  let dificuldade800Aplicada = false;
 
-  const imagemAreia = await carregarImagem("assets/images/areia.jpg");
-  const texturaAreia = criarTextura(gl, imagemAreia); // placeholder
+  // carrega as imagens
+  const [
+    imgFundo, imgTemplo, imgTorreArco, imgTorreAnubis, imgCatapulta,
+    imgMumia, imgEscaravelho, imgGuerreiroChacal,
+    imgFlecha, imgMaldicao, imgPedra,
+  ] = await Promise.all([
+    carregarImagem("assets/images/fundo.png"),
+    carregarImagem("assets/images/templo.png"),
+    carregarImagem("assets/images/torrearco.png"),
+    carregarImagem("assets/images/torreanubis.png"),
+    carregarImagem("assets/images/catapulta.png"),
+    carregarImagem("assets/images/mumia.png"),
+    carregarImagem("assets/images/escaravelho.png"),
+    carregarImagem("assets/images/guerreirochacal.png"),
+    carregarImagem("assets/images/flecha.png"),
+    carregarImagem("assets/images/maldicao.png"),
+    carregarImagem("assets/images/pedra.png"),
+  ]);
+
+  //WebGLTexture
+  const texturaFundo = criarTextura(gl, imgFundo);
+  const texturaTemplo = criarTextura(gl, imgTemplo);
+  const texturaTorreArco = criarTextura(gl, imgTorreArco);
+  const texturaTorreAnubis = criarTextura(gl, imgTorreAnubis);
+  const texturaCatapulta = criarTextura(gl, imgCatapulta);
+  const texturaMumia = criarTextura(gl, imgMumia);
+  const texturaEscaravelho = criarTextura(gl, imgEscaravelho);
+  const texturaGuerreiroChacal = criarTextura(gl, imgGuerreiroChacal);
+  const texturaFlecha = criarTextura(gl, imgFlecha);
+  const texturaMaldicao = criarTextura(gl, imgMaldicao);
+  const texturaPedra = criarTextura(gl, imgPedra);
+
+  const tiposDeInimigo = criarTiposDeInimigo({
+    mumia: texturaMumia,
+    escaravelho: texturaEscaravelho,
+    guerreiroChacal: texturaGuerreiroChacal,
+  });
+
+  const listaDeTiposDeInimigo = Object.values(tiposDeInimigo);
+
+  const elementoStatusCatapulta = document.getElementById("status-catapulta");
+  const elementoStatusAnubis = document.getElementById("status-anubis");
+  const elementoStatusDificuldade = document.getElementById("status-dificuldade");
+
+  const tiposDeTorre = criarTiposDeTorre({
+    torreArco: texturaTorreArco,
+    torreAnubis: texturaTorreAnubis,
+    catapulta: texturaCatapulta,
+    flecha: texturaFlecha,
+    maldicao: texturaMaldicao,
+    pedra: texturaPedra,
+  });
 
   const inimigos = [];
   let tempoDesdeUltimoSpawn = 0;
-  const intervaloSpawn = 1.5; // segundos entre cada inimigo
+  let intervaloSpawn = 1.5; // segundos entre cada inimigo
 
   const projeteis = [];
 
@@ -52,16 +129,13 @@ async function iniciar() {
     else if (borda === 2) { x = -40; y = Math.random() * canvas.height; }
     else { x = canvas.width + 40; y = Math.random() * canvas.height; }
 
+    const tipoSorteado = listaDeTiposDeInimigo[Math.floor(Math.random() * listaDeTiposDeInimigo.length)];
+
     inimigos.push(new Inimigo({
       x, y,
-      velocidade: 80,
-      vidaMaxima: 30,
-      largura: 40,
-      altura: 40,
-      textura: texturaAreia,
-      alcanceAtaque: 40,
-      danoAtaque: 5,
-      cadenciaAtaque: 1,
+      ...tipoSorteado,
+      vidaMaxima: tipoSorteado.vidaMaxima * multiplicadorDificuldade,
+      danoAtaque: tipoSorteado.danoAtaque * multiplicadorDificuldade,
     }));
   }
 
@@ -69,36 +143,37 @@ async function iniciar() {
     x: centroX,
     y: centroY,
     vidaMaxima: 100,
-    largura: 70,
-    altura: 70,
-    textura: texturaAreia, // placeholder
+    largura: 100,
+    altura: 100,
+    textura: texturaTemplo,
   });
 
-  const torre = new Torre({
-      x: centroX,
-      y: centroY,
-      alcance: 200,
-      dano: 10,
-      cadencia: 1, // 1 tiro por segundo
-      largura: 60,
-      altura: 60,
-      textura: texturaAreia, // placeholder
-    });
+  const torres = [
+    new Torre({ x: centroX - 220, y: centroY - 130, ...tiposDeTorre.arco }),
+  ];
 
-  function criarProjetil(x, y, alvo) {
+  function criarProjetil(x, y, alvo, torreOrigem) {
     projeteis.push(new Projetil({
       x, y,
       alvo,
-      velocidade: 400,
-      dano: torre.dano,
-      largura: 12,
-      altura: 12,
-      textura: texturaAreia, // placeholder
+      velocidade: torreOrigem.velocidadeProjetil,
+      dano: torreOrigem.dano,
+      largura: torreOrigem.larguraProjetil,
+      altura: torreOrigem.alturaProjetil,
+      textura: torreOrigem.texturaProjetil,
+      efeitoLentidao: torreOrigem.efeitoLentidao,
+      raioDano: torreOrigem.raioDano,
+      todosInimigos: inimigos,
     }));
   }
 
   canvas.addEventListener("click", (evento) => {
-    if (jogoAcabou) return;
+    if (!musicaJaIniciada) {
+      musicaJaIniciada = true;
+      musicaFundo.play();
+    }
+
+    if (jogoAcabou || jogoPausado) return;
 
     const retanguloCanvas = canvas.getBoundingClientRect();
     const escalaX = canvas.width / retanguloCanvas.width;
@@ -115,9 +190,98 @@ async function iniciar() {
       const dentroDoY = cliqueY >= inimigo.y - meiaAltura && cliqueY <= inimigo.y + meiaAltura;
 
       if (dentroDoX && dentroDoY) {
-        inimigo.receberDano(15); // dano
+        // acha a torre mais proxima
+        let torreMaisProxima = torres[0];
+        let menorDistancia = Math.hypot(torreMaisProxima.x - inimigo.x, torreMaisProxima.y - inimigo.y);
+
+        for (const torreAtual of torres) {
+          const distancia = Math.hypot(torreAtual.x - inimigo.x, torreAtual.y - inimigo.y);
+          if (distancia < menorDistancia) {
+            menorDistancia = distancia;
+            torreMaisProxima = torreAtual;
+          }
+        }
+
+        projeteis.push(new Projetil({
+          x: torreMaisProxima.x,
+          y: torreMaisProxima.y,
+          alvo: inimigo,
+          velocidade: torreMaisProxima.velocidadeProjetil * 1.5,
+          dano: 15,
+          largura: torreMaisProxima.larguraProjetil,
+          altura: torreMaisProxima.alturaProjetil,
+          textura: torreMaisProxima.texturaProjetil,
+          todosInimigos: inimigos,
+          raioDano: torreMaisProxima.raioDano,
+        }));
+
         break;
       }
+    }
+  });
+
+  function aumentarDificuldade() {
+    intervaloSpawn = Math.max(0.5, intervaloSpawn - 0.3);
+    multiplicadorDificuldade += 0.25;
+  }
+
+  function verificarDesbloqueios() {
+    if (!catapultaDesbloqueada && pontuacao >= 100) {
+      catapultaDesbloqueada = true;
+      torres.push(new Torre({ x: centroX, y: centroY + 190, ...tiposDeTorre.catapulta }));
+      aumentarDificuldade();
+      elementoStatusCatapulta.textContent = "🏹 Catapulta: desbloqueada!";
+      elementoStatusCatapulta.classList.add("desbloqueado");
+    }
+
+    if (!anubisDesbloqueada && pontuacao >= 400) {
+      anubisDesbloqueada = true;
+      torres.push(new Torre({ x: centroX + 220, y: centroY - 130, ...tiposDeTorre.anubis }));
+      aumentarDificuldade();
+      elementoStatusAnubis.textContent = "🐺 Anúbis: desbloqueada!";
+      elementoStatusAnubis.classList.add("desbloqueado");
+    }
+
+    if (!dificuldade800Aplicada && pontuacao >= 800) {
+      dificuldade800Aplicada = true;
+      aumentarDificuldade();
+      elementoStatusDificuldade.textContent = "⚠️ Dificuldade máxima!";
+      elementoStatusDificuldade.classList.add("desbloqueado");
+    }
+  }
+
+  const botaoPause = document.getElementById("botao-pause");
+  const telaPause = document.getElementById("tela-pause");
+  const botaoContinuar = document.getElementById("botao-continuar");
+
+  let jogoPausado = false;
+
+  function pausarJogo() {
+    jogoPausado = true;
+    telaPause.classList.remove("escondido");
+    musicaFundo.pause();
+  }
+
+  function retomarJogo() {
+    jogoPausado = false;
+    telaPause.classList.add("escondido");
+    if (musicaJaIniciada) musicaFundo.play();
+  }
+
+  botaoPause.addEventListener("click", () => {
+    if (!jogoAcabou) pausarJogo();
+  });
+
+  botaoContinuar.addEventListener("click", retomarJogo);
+
+  const botaoFullscreen = document.getElementById("botao-fullscreen");
+
+  botaoFullscreen.addEventListener("click", () => {
+    const container = document.getElementById("game-container");
+    if (!document.fullscreenElement) {
+      container.requestFullscreen();
+    } else {
+      document.exitFullscreen();
     }
   });
 
@@ -125,6 +289,13 @@ async function iniciar() {
 
   function loop(tempoAtualMs) {
     if (jogoAcabou) return;
+
+    if (jogoPausado) {
+      ultimoTempo = tempoAtualMs / 1000;
+      requestAnimationFrame(loop);
+      return;
+    }
+
     const tempoAtualSegundos = tempoAtualMs / 1000;
     const deltaTime = tempoAtualSegundos - ultimoTempo;
     ultimoTempo = tempoAtualSegundos;
@@ -141,7 +312,9 @@ async function iniciar() {
       inimigo.atualizar(deltaTime, templo);
     }
 
-    torre.atualizar(deltaTime, inimigos, criarProjetil);
+    for (const torre of torres) {
+      torre.atualizar(deltaTime, inimigos, criarProjetil);
+    }
 
     for (const projetil of projeteis) {
         projetil.atualizar(deltaTime);
@@ -155,6 +328,8 @@ async function iniciar() {
       }
     }
 
+    verificarDesbloqueios();
+
     elementoValorVida.textContent = Math.ceil(templo.vida);
     elementoValorPontuacao.textContent = pontuacao;
 
@@ -167,6 +342,15 @@ async function iniciar() {
 
     // DESENHAR
     renderer.limparTela();
+
+    renderer.desenharSprite({
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      largura: canvas.width,
+      altura: canvas.height,
+      textura: texturaFundo,
+    });
+    
     for (const inimigo of inimigos) {
       renderer.desenharSprite({
         x: inimigo.x,
@@ -177,12 +361,22 @@ async function iniciar() {
       });
     }
 
+    for (const torre of torres) {
+      renderer.desenharSprite({
+        x: torre.x,
+        y: torre.y,
+        largura: torre.largura,
+        altura: torre.altura,
+        textura: torre.textura,
+      });
+    }
+
     renderer.desenharSprite({
-      x: torre.x,
-      y: torre.y,
-      largura: torre.largura,
-      altura: torre.altura,
-      textura: torre.textura,
+      x: templo.x,
+      y: templo.y,
+      largura: templo.largura,
+      altura: templo.altura,
+      textura: templo.textura,
     });
 
     for (const projetil of projeteis) {
@@ -197,10 +391,11 @@ async function iniciar() {
 
     if (templo.vida <= 0) {
       jogoAcabou = true;
+      musicaFundo.pause();
       textoPontuacaoFinal.textContent = `Você derrotou inimigos suficientes para ${pontuacao} pontos!`;
       telaGameOver.classList.remove("escondido");
       return;
-  }
+    }
 
     requestAnimationFrame(loop);
   }

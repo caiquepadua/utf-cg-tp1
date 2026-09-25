@@ -1,5 +1,5 @@
 export class Projetil {
-  constructor({ x, y, alvo, velocidade, dano, largura, altura, textura }) {
+  constructor({ x, y, alvo, velocidade, dano, largura, altura, textura, efeitoLentidao, raioDano, todosInimigos }) {
     this.x = x;
     this.y = y;
     this.alvo = alvo;
@@ -8,6 +8,9 @@ export class Projetil {
     this.largura = largura;
     this.altura = altura;
     this.textura = textura;
+    this.efeitoLentidao = efeitoLentidao || null;
+    this.raioDano = raioDano || null;
+    this.todosInimigos = todosInimigos || [];
     this.atingiuAlvo = false;
   }
 
@@ -20,11 +23,24 @@ export class Projetil {
     const dx = this.alvo.x - this.x;
     const dy = this.alvo.y - this.y;
     const distancia = Math.hypot(dx, dy);
-
-    const distanciaDeAcerto = 15; //se chegou perto o suficiente considera que acertou
+    const distanciaDeAcerto = 15;
 
     if (distancia <= distanciaDeAcerto) {
-      this.alvo.receberDano(this.dano);
+      if (this.raioDano) { //dano em area
+        for (const inimigo of this.todosInimigos) {
+          const dxArea = inimigo.x - this.x;
+          const dyArea = inimigo.y - this.y;
+          const distanciaArea = Math.hypot(dxArea, dyArea);
+          if (distanciaArea <= this.raioDano) {
+            inimigo.receberDano(this.dano);
+          }
+        }
+      } else {
+        this.alvo.receberDano(this.dano);
+        if (this.efeitoLentidao) {
+          this.alvo.aplicarLentidao(this.efeitoLentidao.duracao, this.efeitoLentidao.multiplicador);
+        }
+      }
       this.atingiuAlvo = true;
       return;
     }

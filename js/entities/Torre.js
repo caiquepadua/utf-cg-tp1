@@ -1,15 +1,22 @@
 export class Torre {
-  constructor({ x, y, alcance, dano, cadencia, largura, altura, textura }) {
+  constructor({ x, y, alcance, dano, cadencia, largura, altura, textura, velocidadeProjetil, texturaProjetil, larguraProjetil, alturaProjetil, efeitoLentidao, raioDano }) {
     this.x = x;
     this.y = y;
     this.alcance = alcance;
     this.dano = dano;
-    this.cadencia = cadencia; // segundos entre tiros
+    this.cadencia = cadencia;
     this.tempoDesdeUltimoTiro = 0;
     this.largura = largura;
     this.altura = altura;
     this.textura = textura;
     this.alvoAtual = null;
+
+    this.velocidadeProjetil = velocidadeProjetil;
+    this.texturaProjetil = texturaProjetil;
+    this.larguraProjetil = larguraProjetil;
+    this.alturaProjetil = alturaProjetil;
+    this.efeitoLentidao = efeitoLentidao || null;
+    this.raioDano = raioDano || null;
   }
 
   encontrarAlvo(inimigos) {
@@ -36,7 +43,7 @@ export class Torre {
 
     if (this.alvoAtual && this.tempoDesdeUltimoTiro >= this.cadencia) {
       this.tempoDesdeUltimoTiro = 0;
-      criarProjetil(this.x, this.y, this.alvoAtual);
+      criarProjetil(this.x, this.y, this.alvoAtual, this);
     }
   }
 }
