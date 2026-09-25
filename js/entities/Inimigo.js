@@ -1,5 +1,7 @@
+// js/entities/Inimigo.js
+
 export class Inimigo {
-  constructor({ x, y, velocidade, vidaMaxima, largura, altura, textura }) {
+  constructor({ x, y, velocidade, vidaMaxima, largura, altura, textura, alcanceAtaque, danoAtaque, cadenciaAtaque }) {
     this.x = x;
     this.y = y;
     this.velocidade = velocidade;
@@ -9,18 +11,29 @@ export class Inimigo {
     this.altura = altura;
     this.textura = textura;
     this.morto = false;
+
+    this.alcanceAtaque = alcanceAtaque;
+    this.danoAtaque = danoAtaque;
+    this.cadenciaAtaque = cadenciaAtaque;
+    this.tempoDesdeUltimoAtaque = 0;
   }
 
-  atualizar(deltaTime, alvoX, alvoY) {  // vetor direção ate a torre
-    const dx = alvoX - this.x;
-    const dy = alvoY - this.y;
+  atualizar(deltaTime, templo) {
+    const dx = templo.x - this.x;
+    const dy = templo.y - this.y;
     const distancia = Math.hypot(dx, dy);
 
-    if (distancia > 1) {
+    if (distancia > this.alcanceAtaque) { //longe
       const dirX = dx / distancia;
       const dirY = dy / distancia;
       this.x += dirX * this.velocidade * deltaTime;
       this.y += dirY * this.velocidade * deltaTime;
+    } else { //perto
+      this.tempoDesdeUltimoAtaque += deltaTime;
+      if (this.tempoDesdeUltimoAtaque >= this.cadenciaAtaque) {
+        this.tempoDesdeUltimoAtaque = 0;
+        templo.receberDano(this.danoAtaque);
+      }
     }
   }
 

@@ -1,10 +1,8 @@
-// js/entities/Projetil.js
-
 export class Projetil {
   constructor({ x, y, alvo, velocidade, dano, largura, altura, textura }) {
     this.x = x;
     this.y = y;
-    this.alvo = alvo; // referência direta ao objeto Inimigo que esse projétil persegue
+    this.alvo = alvo;
     this.velocidade = velocidade;
     this.dano = dano;
     this.largura = largura;
@@ -14,7 +12,6 @@ export class Projetil {
   }
 
   atualizar(deltaTime) {
-    // se o alvo já morreu (por outro motivo) antes do projétil chegar, só marca como "gasto"
     if (!this.alvo || this.alvo.morto) {
       this.atingiuAlvo = true;
       return;
@@ -24,7 +21,7 @@ export class Projetil {
     const dy = this.alvo.y - this.y;
     const distancia = Math.hypot(dx, dy);
 
-    const distanciaDeAcerto = 15; // "colisão" simplificada: se chegou perto o suficiente, considera que acertou
+    const distanciaDeAcerto = 15; //se chegou perto o suficiente considera que acertou
 
     if (distancia <= distanciaDeAcerto) {
       this.alvo.receberDano(this.dano);

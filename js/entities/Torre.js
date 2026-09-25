@@ -1,5 +1,3 @@
-// js/entities/Torre.js
-
 export class Torre {
   constructor({ x, y, alcance, dano, cadencia, largura, altura, textura }) {
     this.x = x;
@@ -16,7 +14,7 @@ export class Torre {
 
   encontrarAlvo(inimigos) {
     let maisProximo = null;
-    let menorDistancia = this.alcance; // só considera inimigos dentro do alcance
+    let menorDistancia = this.alcance;
 
     for (const inimigo of inimigos) {
       const dx = inimigo.x - this.x;

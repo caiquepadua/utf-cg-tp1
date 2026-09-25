@@ -1,8 +1,8 @@
-// js/main.js
 import { criarRenderer, criarTextura, carregarImagem } from "./renderer.js";
 import { Inimigo } from "./entities/Inimigo.js";
 import { Torre } from "./entities/Torre.js";
 import { Projetil } from "./entities/Projetil.js";
+import { Templo } from "./entities/Templo.js";
 
 const canvas = document.getElementById("game-canvas");
 canvas.width = 960;
@@ -18,6 +18,16 @@ const centroY = canvas.height / 2;
 
 async function iniciar() {
   const renderer = await criarRenderer(gl);
+
+  const telaGameOver = document.getElementById("game-over");
+  const textoPontuacaoFinal = document.getElementById("pontuacao-final");
+  const botaoReiniciar = document.getElementById("botao-reiniciar");
+
+  let jogoAcabou = false;
+
+  botaoReiniciar.addEventListener("click", () => {
+    location.reload();
+  });
 
   const imagemAreia = await carregarImagem("assets/images/areia.jpg");
   const texturaAreia = criarTextura(gl, imagemAreia); // placeholder
@@ -44,8 +54,20 @@ async function iniciar() {
       largura: 40,
       altura: 40,
       textura: texturaAreia,
+      alcanceAtaque: 40,
+      danoAtaque: 5,
+      cadenciaAtaque: 1,
     }));
   }
+
+  const templo = new Templo({
+    x: centroX,
+    y: centroY,
+    vidaMaxima: 100,
+    largura: 70,
+    altura: 70,
+    textura: texturaAreia, // placeholder
+  });
 
   const torre = new Torre({
       x: centroX,
@@ -55,7 +77,7 @@ async function iniciar() {
       cadencia: 1, // 1 tiro por segundo
       largura: 60,
       altura: 60,
-      textura: texturaAreia, // placeholder por enquanto
+      textura: texturaAreia, // placeholder
     });
 
   function criarProjetil(x, y, alvo) {
@@ -73,6 +95,7 @@ async function iniciar() {
   let ultimoTempo = 0;
 
   function loop(tempoAtualMs) {
+    if (jogoAcabou) return;
     const tempoAtualSegundos = tempoAtualMs / 1000;
     const deltaTime = tempoAtualSegundos - ultimoTempo;
     ultimoTempo = tempoAtualSegundos;
@@ -86,7 +109,7 @@ async function iniciar() {
 
     // cada inimigo anda pro centro
     for (const inimigo of inimigos) {
-      inimigo.atualizar(deltaTime, centroX, centroY);
+      inimigo.atualizar(deltaTime, templo);
     }
 
     torre.atualizar(deltaTime, inimigos, criarProjetil);
@@ -102,7 +125,7 @@ async function iniciar() {
       }
     }
 
-    // remove projéteis que já acertaram (ou perderam o alvo)
+    // remove projeteis que acertaram
     for (let i = projeteis.length - 1; i >= 0; i--) {
       if (projeteis[i].atingiuAlvo) {
         projeteis.splice(i, 1);
@@ -138,6 +161,13 @@ async function iniciar() {
         textura: projetil.textura,
       });
     }
+
+    if (templo.vida <= 0) {
+      jogoAcabou = true;
+      textoPontuacaoFinal.textContent = "Você sobreviveu até aqui!"; // placeholder
+      telaGameOver.classList.remove("escondido");
+      return;
+  }
 
     requestAnimationFrame(loop);
   }
