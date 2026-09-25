@@ -29,6 +29,11 @@ async function iniciar() {
     location.reload();
   });
 
+  const elementoValorVida = document.getElementById("valor-vida");
+  const elementoValorPontuacao = document.getElementById("valor-pontuacao");
+
+  let pontuacao = 0;
+
   const imagemAreia = await carregarImagem("assets/images/areia.jpg");
   const texturaAreia = criarTextura(gl, imagemAreia); // placeholder
 
@@ -92,6 +97,30 @@ async function iniciar() {
     }));
   }
 
+  canvas.addEventListener("click", (evento) => {
+    if (jogoAcabou) return;
+
+    const retanguloCanvas = canvas.getBoundingClientRect();
+    const escalaX = canvas.width / retanguloCanvas.width;
+    const escalaY = canvas.height / retanguloCanvas.height;
+
+    const cliqueX = (evento.clientX - retanguloCanvas.left) * escalaX;
+    const cliqueY = (evento.clientY - retanguloCanvas.top) * escalaY;
+
+    for (const inimigo of inimigos) {
+      const meiaLargura = inimigo.largura / 2;
+      const meiaAltura = inimigo.altura / 2;
+
+      const dentroDoX = cliqueX >= inimigo.x - meiaLargura && cliqueX <= inimigo.x + meiaLargura;
+      const dentroDoY = cliqueY >= inimigo.y - meiaAltura && cliqueY <= inimigo.y + meiaAltura;
+
+      if (dentroDoX && dentroDoY) {
+        inimigo.receberDano(15); // dano
+        break;
+      }
+    }
+  });
+
   let ultimoTempo = 0;
 
   function loop(tempoAtualMs) {
@@ -121,9 +150,13 @@ async function iniciar() {
     // remove inimigos mortos
     for (let i = inimigos.length - 1; i >= 0; i--) {
       if (inimigos[i].morto) {
+        pontuacao += 10;
         inimigos.splice(i, 1);
       }
     }
+
+    elementoValorVida.textContent = Math.ceil(templo.vida);
+    elementoValorPontuacao.textContent = pontuacao;
 
     // remove projeteis que acertaram
     for (let i = projeteis.length - 1; i >= 0; i--) {
@@ -164,7 +197,7 @@ async function iniciar() {
 
     if (templo.vida <= 0) {
       jogoAcabou = true;
-      textoPontuacaoFinal.textContent = "Você sobreviveu até aqui!"; // placeholder
+      textoPontuacaoFinal.textContent = `Você derrotou inimigos suficientes para ${pontuacao} pontos!`;
       telaGameOver.classList.remove("escondido");
       return;
   }

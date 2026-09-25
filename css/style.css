@@ -57,3 +57,12 @@ body {
   font-size: 1rem;
   cursor: pointer;
 }
+
+#hud {
+  padding: 16px;
+  font-size: 1.1rem;
+  font-family: sans-serif;
+  text-shadow: 1px 1px 2px black;
+  display: flex;
+  justify-content: space-between;
+}
